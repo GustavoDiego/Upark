@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="264" viewBox="0 0 920 264" role="img" aria-labelledby="title desc">
+  <title id="title">Upark em ação no terminal</title>
+  <desc id="desc">O perfil local usa SQLite. Um envio de README gera uma URL de download.</desc>
+  <defs>
+    <linearGradient id="surface" x2="100%" y2="100%">
+      <stop stop-color="#151e34"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="908" height="252" rx="20" fill="url(#surface)" stroke="#38445e" stroke-width="2"/>
+  <path d="M7 56h906" stroke="#38445e"/>
+  <circle cx="31" cy="32" r="5" fill="#fb7185"/>
+  <circle cx="49" cy="32" r="5" fill="#fbbf24"/>
+  <circle cx="67" cy="32" r="5" fill="#34d399"/>
+  <text x="89" y="37" fill="#cad5eb" font-family="ui-monospace, Consolas, monospace" font-size="15">upark · demonstração local</text>
+  <g font-family="ui-monospace, Consolas, monospace" font-size="17">
+    <text x="32" y="94" fill="#6ee7b7">$ <tspan fill="#f1f5f9">upark create</tspan></text>
+    <text x="32" y="124" fill="#aab9d3">Perfil 'local' cadastrado.</text>
+    <text x="32" y="166" fill="#6ee7b7">$ <tspan fill="#f1f5f9">upark add path="./README.md" use=local</tspan></text>
+    <text x="32" y="208" fill="#7dd3fc">http://127.0.0.1:8765/files/0a363085410d4c4badfec22cc06a2f62/README.md</text>
+  </g>
+</svg>

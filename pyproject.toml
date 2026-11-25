@@ -1,0 +1,22 @@
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[project]
+name = "upark"
+version = "0.1.0"
+description = "Publish files from the terminal using your own storage"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.optional-dependencies]
+s3 = ["boto3>=1.36,<2"]
+
+[project.scripts]
+upark = "upark.cli:main"
+
+[tool.uv.build-backend]
+module-root = ""
+source-include = ["docs/**", "tests/**", ".github/**", ".gitignore"]
