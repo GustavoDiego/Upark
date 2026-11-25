@@ -1,6 +1,7 @@
 import http.client
 import re
 import unicodedata
+from contextlib import closing
 from typing import BinaryIO
 from urllib.error import HTTPError
 from urllib.parse import quote, urlsplit
@@ -86,7 +87,7 @@ def upload_s3(settings: dict[str, str], key: str, source: BinaryIO) -> str:
         raise UparkError('Para usar S3 ou R2, instale com python -m pip install ".[s3]".') from error
 
     try:
-        with boto3.client(
+        client = boto3.client(
             "s3",
             endpoint_url=settings["endpoint"] or None,
             region_name=settings["region"],
@@ -99,7 +100,8 @@ def upload_s3(settings: dict[str, str], key: str, source: BinaryIO) -> str:
                 response_checksum_validation="when_required",
                 s3={"addressing_style": "path" if settings["endpoint"] else "auto"},
             ),
-        ) as client:
+        )
+        with closing(client):
             client.upload_fileobj(
                 source,
                 settings["bucket"],
