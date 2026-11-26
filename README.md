@@ -8,7 +8,7 @@
 ![Windows e Linux](https://img.shields.io/badge/Sistemas-Windows%20%7C%20Linux-1F2937)
 [![Licença MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-10B981)](LICENSE)
 
-[Instalação](#instalação) · [Teste sem conta](#teste-sem-conta) · [Link público grátis](#link-público-grátis) · [Provedores](#provedores)
+[Instalação](#instalação) · [Teste sem conta](#teste-sem-conta) · [Link público grátis](#link-público-grátis) · [Provedores](#provedores) · [Automação](#automação-para-agentes-e-ci)
 
 </div>
 
@@ -18,7 +18,14 @@ Cadastre seu destino uma vez com `upark create`. Depois, use o nome do perfil pa
 
 ## Instalação
 
-Requer **Python 3.11+**. Na pasta do Upark, ative um ambiente virtual seguindo os comandos do seu sistema.
+Requer **Python 3.11+**. Clone o repositório e entre na pasta do projeto.
+
+```sh
+git clone https://github.com/GustavoDiego/Upark.git
+cd Upark
+```
+
+Crie um ambiente virtual seguindo os comandos do seu sistema.
 
 <details open>
 <summary><b>Windows · PowerShell</b></summary>
@@ -45,7 +52,7 @@ upark --help
 
 </details>
 
-Se você baixou o ZIP com o instalador, pode rodar `python -m pip install ./upark-0.1.0-py3-none-any.whl` dentro do ambiente virtual. Para experimentar Supabase ou SQLite sem instalar nada, use `python -m upark` a partir da pasta do projeto.
+Para experimentar Supabase, GitHub Releases ou SQLite sem instalar dependências, use `python -m upark` a partir da pasta do projeto.
 
 ## Teste sem conta
 
@@ -79,6 +86,33 @@ O **Supabase Free** inclui **1 GB de armazenamento**, com limite de **50 MB por 
 
 Cada envio recebe um identificador próprio. Você pode enviar arquivos de mesmo nome sem sobrescrever os anteriores.
 
+## Automação para agentes e CI
+
+Use `upark create` com argumentos para cadastrar um perfil sem abrir prompts. Cada `--set` configura um campo do destino. Cada `--secret-env` recebe o **nome** da variável que fornecerá a credencial na hora do envio. O perfil salva a referência à variável.
+
+**Demonstração real.** O GitHub Actions rodou os comandos abaixo, baixou o arquivo sem autenticação e comparou o download byte a byte com o original. [Baixar arquivo de demonstração](https://github.com/GustavoDiego/Upark/releases/download/demo-automacao/ed898ddce8c449ea92107b683737f430-upark-agent-demo.txt) · [Ver execução](https://github.com/GustavoDiego/Upark/actions/runs/45861781905)
+
+```bash
+upark create --name demo --provider github \
+  --set repository=GustavoDiego/Upark --set tag=demo-automacao \
+  --secret-env token=GH_TOKEN
+
+url=$(upark add --path "meu-arquivo.txt" --use demo)
+printf '%s\n' "$url"
+```
+
+Para usar no seu repositório, substitua `GustavoDiego/Upark` pelo seu **DONO/REPOSITÓRIO** público e `demo-automacao` pela **TAG** de uma release publicada que aceite novos arquivos. Configure `GH_TOKEN` com escrita em **Contents** apenas nesse repositório. Em um workflow do próprio repositório, você pode usar o token temporário do GitHub Actions com `contents: write`. [Exemplo de workflow](.github/workflows/agent-demo.yml)
+
+| `--provider` | Campos de `--set` | Campos de `--secret-env` |
+| --- | --- | --- |
+| `github` | `repository`, `tag` | `token` |
+| `supabase` | `project_url`, `bucket` | `api_key` |
+| `r2` | `endpoint`, `bucket`, `public_url` | `access_key`, `secret_key` |
+| `s3` | `bucket`, `public_url`. Opcionais `endpoint`, `region` | `access_key`, `secret_key`. Opcional `session_token` |
+| `sqlite` | Opcionais `database`, `public_url` | Nenhum |
+
+O `add` escreve só a URL na saída padrão e retorna código diferente de zero se houver erro. Você pode usar essa saída em um README, comentário ou outra integração.
+
 ## Provedores
 
 | Opção | Destino | O que configurar | Onde o link abre |
@@ -87,6 +121,7 @@ Cada envio recebe um identificador próprio. Você pode enviar arquivos de mesmo
 | **2** | **Cloudflare R2** | Endpoint S3, bucket, credenciais R2 e URL pública | Internet |
 | **3** | **Amazon S3 / compatível** | Região, bucket, credenciais e URL pública. Endpoint opcional para AWS | Internet |
 | **4** | **SQLite** | Arquivo de banco e URL base de download | Local por padrão, público com servidor acessível |
+| **5** | **GitHub Releases** | Repositório público, tag de release publicada e token com escrita em Contents | Internet |
 
 <details>
 <summary><b>Configurar Cloudflare R2 ou S3</b></summary>
@@ -120,7 +155,7 @@ Rode `upark serve use=PERFIL` em um host acessível e aponte um proxy reverso HT
 Para caminhos com espaços, use aspas, como em `upark add path="C:\Arquivos\Meu arquivo.pdf" use=meu-supabase`. O comando também aceita `--path "CAMINHO" --use PERFIL`. A saída padrão contém só a URL em caso de sucesso, o que facilita capturá-la em scripts. Caminhos inexistentes e perfis desconhecidos retornam erro. No segundo caso, o Upark lista os perfis cadastrados.
 
 > [!IMPORTANT]
-> Qualquer pessoa com acesso ao link público pode baixar o arquivo. A chave do provedor fica em texto legível no banco local `profiles.sqlite3`. Mantenha esse banco fora de repositórios e pastas compartilhadas.
+> Qualquer pessoa com acesso ao link público pode baixar o arquivo. No cadastro interativo, as chaves digitadas ficam em texto legível no banco local `profiles.sqlite3`. Em automações, use `--secret-env` para salvar só o nome da variável. Mantenha o banco fora de repositórios e pastas compartilhadas.
 
 Por padrão, os perfis ficam em `%LOCALAPPDATA%\upark` no Windows e em `$XDG_CONFIG_HOME/upark` ou `~/.config/upark` no Linux. Defina `UPARK_HOME` para mudar o diretório.
 

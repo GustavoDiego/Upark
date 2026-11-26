@@ -2,9 +2,6 @@ name: Demo de automação
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/agent-demo.yml']
 
 permissions:
   contents: read
