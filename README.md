@@ -92,7 +92,7 @@ Cada envio recebe um identificador próprio. Você pode enviar arquivos de mesmo
 
 Use `upark create` com argumentos para cadastrar um perfil sem abrir prompts. Cada `--set` configura um campo do destino. Cada `--secret-env` recebe o **nome** da variável que fornecerá a credencial na hora do envio. O perfil salva a referência à variável.
 
-**Demonstração real.** O GitHub Actions rodou os comandos abaixo, baixou o arquivo sem autenticação e comparou o download byte a byte com o original. [Baixar arquivo de demonstração](https://github.com/GustavoDiego/Upark/releases/download/demo-automacao/ed898ddce8c449ea92107b683737f430-upark-agent-demo.txt) · [Ver execução](https://github.com/GustavoDiego/Upark/actions/runs/45861781905)
+**Demonstração real.** O GitHub Actions rodou os comandos abaixo, baixou o arquivo sem autenticação e comparou o download byte a byte com o original. [Baixar arquivo de demonstração](https://github.com/GustavoDiego/Upark/releases/download/demo-automacao/ed898ddce8c449ea92107b683737f430-upark-agent-demo.txt) · [Ver execução](https://github.com/GustavoDiego/Upark/actions/runs/45861781905) · [Baixar README em inglês](https://github.com/GustavoDiego/Upark/releases/download/demo-automacao/a443740b9bf04a789583a460a621cea2-README.en.md)
 
 ```bash
 upark create --name demo --provider github \
