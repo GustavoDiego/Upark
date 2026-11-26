@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import re
 import sqlite3
@@ -193,6 +194,46 @@ class UparkTests(unittest.TestCase):
             self.assertEqual((code, stdout), (1, ""))
             self.assertIn("HTTP 307", error)
         self.assertIsNone(NoRedirect().redirect_request(None, None, 307, "", {}, "https://external.example"))
+
+    def test_noninteractive_github_profile_uploads_and_checks_public_url(self):
+        with patch("builtins.input", side_effect=AssertionError("cadastro deve ser sem prompts")), patch(
+            "getpass.getpass", side_effect=AssertionError("segredo deve vir do ambiente")
+        ):
+            code, _, error = self.cli(
+                "create", "--name", "automation", "--provider", "github",
+                "--set", "repository=owner/project", "--set", "tag=demo",
+                "--secret-env", "token=UPARK_TEST_TOKEN",
+            )
+        self.assertEqual(code, 0, error)
+        with patch.dict(os.environ, {"UPARK_TEST_TOKEN": ""}):
+            code, stdout, error = self.cli("add", f"path={self.source}", "use=automation")
+            self.assertEqual((code, stdout), (1, ""))
+            self.assertIn("UPARK_TEST_TOKEN", error)
+
+        url = "https://github.com/owner/project/releases/download/demo/arquivo.pdf"
+        requests = []
+
+        def github_api(request, timeout):
+            requests.append(request)
+            self.assertEqual(request.get_header("Authorization"), "Bearer token-de-teste")
+            if request.get_method() == "POST":
+                self.assertEqual(request.data.read(), self.payload)
+                self.assertEqual(request.get_header("Content-length"), str(len(self.payload)))
+                response = {"browser_download_url": url}
+            elif request.full_url.endswith("/releases/tags/demo"):
+                response = {"id": 42, "draft": False}
+            else:
+                response = {"private": False}
+            return io.BytesIO(json.dumps(response).encode())
+
+        with patch.dict(os.environ, {"UPARK_TEST_TOKEN": "token-de-teste"}), patch(
+            "upark.storage.build_opener", return_value=Mock(open=github_api)
+        ), patch("upark.storage.urlopen", return_value=io.BytesIO(b"")) as download:
+            self.assertEqual(self.cli("add", f"path={self.source}", "use=automation"), (0, url, ""))
+        self.assertEqual(len(requests), 3)
+        self.assertRegex(requests[-1].full_url, r"^https://uploads.github.com/repos/owner/project/releases/42/assets\?name=[a-f0-9]{32}-Ola-mundo.pdf$")
+        self.assertEqual(download.call_args.args[0].full_url, url)
+        self.assertIsNone(download.call_args.args[0].get_header("Authorization"))
 
     @unittest.skipUnless(find_spec("boto3"), "instale o extra s3 para testar o SDK")
     def test_s3_and_r2_upload(self):

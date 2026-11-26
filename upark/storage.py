@@ -1,4 +1,6 @@
 import http.client
+import json
+import os
 import re
 import unicodedata
 from contextlib import closing
@@ -122,14 +124,76 @@ def upload_s3(settings: dict[str, str], key: str, source: BinaryIO) -> str:
     return f"{settings['public_url']}/{key}"
 
 
+def upload_github(settings: dict[str, str], key: str, source: BinaryIO, size: int) -> str:
+    if not 0 < size < 2 * 1024**3:
+        raise UparkError("O GitHub Releases aceita arquivos com tamanho maior que zero e menor que 2 GiB.")
+    repository = quote(settings["repository"], safe="/")
+    tag = quote(settings["tag"], safe="")
+    api = f"https://api.github.com/repos/{repository}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {settings['token']}",
+        "User-Agent": "Upark",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    opener = build_opener(NoRedirect())
+
+    def request_json(request: Request, action: str) -> dict:
+        try:
+            with opener.open(request, timeout=60) as response:
+                data = json.load(response)
+        except HTTPError as error:
+            error.close()
+            raise UparkError(
+                f"GitHub recusou a operação '{action}' (HTTP {error.code}). "
+                "Confira o repositório, a tag e a permissão Contents do token."
+            ) from error
+        except HTTP_ERRORS as error:
+            raise UparkError(f"Falha na conexão com GitHub ao {action}.") from error
+        except (UnicodeError, json.JSONDecodeError) as error:
+            raise UparkError(f"Resposta inválida do GitHub ao {action}.") from error
+        if not isinstance(data, dict):
+            raise UparkError(f"Resposta inválida do GitHub ao {action}.")
+        return data
+
+    repo = request_json(Request(api, headers=headers), "consultar o repositório")
+    if repo.get("private") is not False:
+        raise UparkError("Para gerar um link público, use um repositório público.")
+    release = request_json(Request(f"{api}/releases/tags/{tag}", headers=headers), "consultar a release")
+    if release.get("draft") is not False or release.get("immutable") is True:
+        raise UparkError("Use uma release publicada que ainda aceite novos arquivos.")
+    release_id = release.get("id")
+    if type(release_id) is not int or release_id <= 0:
+        raise UparkError("O GitHub não informou um identificador válido para a release.")
+
+    filename = quote(key, safe="")
+    endpoint = f"https://uploads.github.com/repos/{repository}/releases/{release_id}/assets?name={filename}"
+    upload_headers = headers | {"Content-Type": DOWNLOAD_TYPE, "Content-Length": str(size)}
+    request = Request(endpoint, data=source, headers=upload_headers, method="POST")
+    asset = request_json(request, "enviar o arquivo")
+    link = asset.get("browser_download_url")
+    if not isinstance(link, str) or not link.startswith("https://github.com/"):
+        raise UparkError("O GitHub aceitou o envio sem retornar um link de download válido.")
+    return link
+
+
 def publish(profile: Profile, filename: str, source: BinaryIO, size: int) -> str:
     key = object_key(filename)
-    settings = profile.settings
+    settings = profile.settings.copy()
+    for setting, variable in profile.settings.items():
+        if setting.startswith("env:"):
+            secret = os.environ.get(variable)
+            if not secret:
+                raise UparkError(f"A variável de ambiente {variable} precisa estar definida para o perfil '{profile.name}'.")
+            settings[setting.removeprefix("env:")] = secret
     if profile.provider == "sqlite":
         store_blob(settings["database"], key, source, size)
         return f"{settings['public_url']}/files/{key}"
     if profile.provider == "supabase":
         link = upload_supabase(settings, key, source, size)
+    elif profile.provider == "github":
+        key = key.replace("/", "-", 1)
+        link = upload_github(settings, key, source, size)
     else:
         link = upload_s3(settings, key, source)
 
@@ -145,6 +209,6 @@ def publish(profile: Profile, filename: str, source: BinaryIO, size: int) -> str
         detail = "sem resposta"
     raise UparkError(
         f"Arquivo enviado como '{key}', mas o acesso público falhou ({detail}). "
-        "Confira a configuração pública do bucket. "
+        "Confira a configuração pública do destino. "
         f"URL esperada: {link}"
     )

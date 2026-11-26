@@ -1,0 +1,45 @@
+name: Demo de automação
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/agent-demo.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Publicar e verificar o arquivo de demonstração
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPARK_HOME: ${{ runner.temp }}/upark-demo
+        run: |
+          tag=demo-automacao
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Demonstração do Upark para agentes" --prerelease --latest=false \
+              --notes "Arquivo de teste publicado pelo Upark e verificado com um download anônimo."
+          fi
+
+          file="$RUNNER_TEMP/upark-agent-demo.txt"
+          printf '%s\n' 'Upark: arquivo de demonstração publicado sem prompts.' \
+            'Este arquivo contém apenas dados de teste.' > "$file"
+          python -m upark create --name demo --provider github \
+            --set "repository=$GITHUB_REPOSITORY" --set "tag=$tag" --secret-env token=GH_TOKEN
+          url=$(python -m upark add --path "$file" --use demo)
+          curl --fail --location --silent --show-error --retry 3 "$url" --output "$RUNNER_TEMP/upark-download.txt"
+          cmp "$file" "$RUNNER_TEMP/upark-download.txt"
+          printf 'URL_PUBLICA=%s\n' "$url"
+          printf '### Download verificado sem autenticação\n\n[Baixar arquivo de demonstração](%s)\n' "$url" >> "$GITHUB_STEP_SUMMARY"
