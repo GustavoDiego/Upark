@@ -8,6 +8,8 @@
 ![Windows e Linux](https://img.shields.io/badge/Sistemas-Windows%20%7C%20Linux-1F2937)
 [![Licença MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-10B981)](LICENSE)
 
+**Português** · [English](README.en.md)
+
 [Instalação](#instalação) · [Teste sem conta](#teste-sem-conta) · [Link público grátis](#link-público-grátis) · [Provedores](#provedores) · [Automação](#automação-para-agentes-e-ci)
 
 </div>
